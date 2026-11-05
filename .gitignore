@@ -1,0 +1,13 @@
+node_modules/
+*.log
+.env
+.DS_Store
+
+# Never commit app packages or extracted APK contents
+*.apk
+*.apks
+*.xapk
+
+# Private deployment details - never commit
+DEPLOY.local.md
+docker-compose.override.yml

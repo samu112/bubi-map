@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+  />
+  <title>Bubi Live — Budapest bike finder</title>
+  <meta name="description" content="Live MOL Bubi bike-share availability in Budapest. Filter by electric or mechanical bikes and find the nearest one." />
+  <meta name="theme-color" content="#16241c" />
+
+  <!-- PWA / iOS home-screen -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bubi Live" />
+
+  <!-- MapLibre GL JS (vector-tile renderer with native rotation) — the CSS
+       needs to load early, the JS libs load at the end of body (below). -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
+
+  <!-- Type: Barlow Semi Condensed (transit-signage numerics), system fallback -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="map" aria-label="Map of Budapest bike-share stations"></div>
+
+  <!-- Loading veil -->
+  <div id="veil" class="veil">
+    <div class="veil-mark">
+      <span class="veil-dot"></span>
+      <span data-i18n="loading">Loading live stations…</span>
+    </div>
+  </div>
+
+  <!-- Find-me -->
+  <button id="locate" class="locate" type="button" aria-label="Find bikes near me" title="Find bikes near me">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-6a1 1 0 0 1 1 1v1.06a8.004 8.004 0 0 1 6.94 6.94H21a1 1 0 1 1 0 2h-1.06A8.004 8.004 0 0 1 13 19.94V21a1 1 0 1 1-2 0v-1.06A8.004 8.004 0 0 1 4.06 13H3a1 1 0 1 1 0-2h1.06A8.004 8.004 0 0 1 11 4.06V3a1 1 0 0 1 1-1Zm0 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/>
+    </svg>
+  </button>
+
+  <!-- Bottom sheet -->
+  <section id="sheet" class="sheet collapsed" aria-label="Filters">
+    <button id="handle" class="handle" type="button" aria-expanded="false" aria-controls="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+    </button>
+
+    <header class="sheet-head">
+      <div class="brand">
+        <span class="brand-chip" aria-hidden="true"></span>
+        <span class="brand-name">Bubi&nbsp;Live</span>
+        <div class="lang">
+          <button id="lang-btn" class="lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Change language">
+            <span class="lang-flag" id="lang-flag"></span>
+            <svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4z"/></svg>
+          </button>
+          <ul id="lang-menu" class="lang-menu" role="menu" hidden></ul>
+        </div>
+      </div>
+      <div class="tally" id="tally">
+        <span id="tally-stations">–</span> <span data-i18n="stations">stations</span> ·
+        <span id="tally-bikes">–</span> <span data-i18n="bikes">bikes</span>
+      </div>
+    </header>
+
+    <div id="sheet-body" class="sheet-body">
+      <div class="field">
+        <span class="field-label" data-i18n="show">Show</span>
+        <div class="segmented" role="radiogroup" aria-label="Bike type">
+          <button class="seg is-active" role="radio" aria-checked="true" data-type="both"><span data-i18n="both">Any</span></button>
+          <button class="seg" role="radio" aria-checked="false" data-type="electric">
+            <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg><span data-i18n="electric">Electric</span>
+          </button>
+          <button class="seg" role="radio" aria-checked="false" data-type="mechanical"><span data-i18n="mechanical">Mechanical</span></button>
+        </div>
+      </div>
+
+      <label class="toggle">
+        <input type="checkbox" id="hide-empty" />
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="toggle-text" data-i18n="hide_empty">Hide stations with none available</span>
+      </label>
+
+      <label class="toggle">
+        <input type="checkbox" id="dark-mode" />
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="toggle-text" data-i18n="dark_mode">Dark mode</span>
+      </label>
+
+      <div class="field field-maps">
+        <span class="field-label" data-i18n="maps_via">Open directions in</span>
+        <select id="maps-provider" class="select" aria-label="Maps app for directions">
+          <option value="google">Google Maps</option>
+          <option value="apple">Apple Maps</option>
+          <option value="waze">Waze</option>
+          <option value="osm">OpenStreetMap</option>
+        </select>
+      </div>
+
+      <div class="field field-maps" id="open-in-field">
+        <span class="field-label" data-i18n="open_in">Open links in</span>
+        <select id="open-in" class="select" aria-label="Open links in browser or app">
+          <option value="browser" data-i18n="opt_browser">Browser</option>
+          <option value="app" data-i18n="opt_app">App (if installed)</option>
+        </select>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span class="key"><i class="swatch sw-station"></i><span data-i18n="legend_station">Station</span></span>
+        <span class="key"><i class="swatch sw-empty"></i><span data-i18n="legend_empty">Empty station</span></span>
+        <span class="key"><i class="swatch sw-bike"></i><span data-i18n="legend_bike">Bike, no station</span></span>
+        <span class="key"><i class="swatch sw-batt-hi"></i><span data-i18n="legend_batt_hi">E-bike over 50%</span></span>
+        <span class="key"><i class="swatch sw-batt-mid"></i><span data-i18n="legend_batt_mid">E-bike 20–50%</span></span>
+        <span class="key"><i class="swatch sw-batt-low"></i><span data-i18n="legend_batt_low">E-bike under 20%</span></span>
+      </div>
+
+      <p class="attribution">
+        Data source: <a href="https://opendata.bkk.hu/data-sources" target="_blank" rel="noopener noreferrer">BKK Zrt., CC&nbsp;BY&nbsp;4.0</a> · Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>
+      </p>
+      <p class="disclaimer">
+        Unofficial project — not affiliated with or endorsed by BKK, MOL or Inurba.
+      </p>
+    </div>
+  </section>
+
+  <!-- iOS install hint (browser only, not when already installed) -->
+  <div id="ios-hint" class="ios-hint" hidden>
+    <span>
+      <span data-i18n="ios_pre">Add Bubi Live to your home screen: tap</span>
+      <svg viewBox="0 0 24 24" class="share" aria-hidden="true"><path d="M12 3l4 4h-3v7h-2V7H8l4-4Zm-7 8h2v8h10v-8h2v10H5V11Z"/></svg>
+      <span data-i18n="ios_post">then “Add to Home Screen”.</span>
+    </span>
+    <button id="ios-hint-close" type="button" aria-label="Dismiss">×</button>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/supercluster@8.0.1/dist/supercluster.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+services:
+  bubi-map:
+    build: .
+    container_name: bubi-map
+    restart: unless-stopped
+    environment:
+      # Identifies this client to the Urban Sharing gateway.
+      CLIENT_IDENTIFIER: bubi-live-map
+      # Poll cadence (ms). Keep within the CC BY 4.0 guidance (15000-30000).
+      STATUS_INTERVAL_MS: "20000"
+    ports:
+      - "127.0.0.1:3000:3000"
