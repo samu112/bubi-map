@@ -2,6 +2,8 @@
 
 **Magyar** | [English](README.en.md)
 
+**Élő demó:** [bubi.lerant.dev](https://bubi.lerant.dev)
+
 ![Bubi Live élő állomásszámokkal Budapest térképén](docs/screenshot.jpg)
 
 Gyors, valós idejű térkép a MOL Bubi állomásairól. Szűrhetsz elektromos,

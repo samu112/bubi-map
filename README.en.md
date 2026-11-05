@@ -2,6 +2,8 @@
 
 [Magyar](README.md) | **English**
 
+**Live demo:** [bubi.lerant.dev](https://bubi.lerant.dev)
+
 ![Bubi Live showing live station counts on a map of Budapest](docs/screenshot-en.jpg)
 
 A lightweight, real-time map of MOL Bubi bike-share stations. Filter by
